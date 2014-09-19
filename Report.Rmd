@@ -1,0 +1,85 @@
+---
+title: "Transmission Type and its Effect on Fuel Efficiency"
+author: "Russell Allen"
+date: "Tuesday, September 16, 2014"
+output: pdf_document
+---
+
+## Executive Summary
+
+This analysis sought to determine if an automatic or manual transmission was better, as measured by MPG.  While a cursory examination of the data indicated a manual transmission as favorable to MPG, a deeper analysis revealed that the transmission type alone is insufficient to predict a change in MPG.  This analysis concluded that weight is the primary explanatory variable for a vehicles fuel efficiency, and the initial naive observation of transmission type is the result of vehicle weight confounding the initial naive model.
+
+
+### Source Data
+
+```{r echo=FALSE}
+data(mtcars);
+```
+
+Data for this analysis is drawn from the `mtcars` data set, which is available within the R distribution.  This data composes 32 observations of 11 variables.  Of the 11 variables, we will focus on the transmission type (am), automatic or manual, as an explanatory variable to the vehicle's fuel efficiency expressed in the miles per gallon (mpg) response variable.
+
+### Analysis
+
+A simple (naive) analysis of the transmission types relationship to MPG indicates a strong association between the two variables.
+
+```{r}
+coef <- summary(lm(mpg ~ am , data = mtcars))$coefficients; coef
+```
+
+This simple regression ignores all other variables and assumes that the transmission type is the only variable affecting the fuel efficiency of the vehicle.  Under this naive model, we would clearly reject the null hypothesis (that transmission type has no effect on fuel efficiency) as the P value of `r round(coef["am",4]*100,2)`% is well below the traditional 5% threshold.
+
+However, a more detailed analysis which  takes all the provided variables into consideration, reveals that the previously observed effect of transmission type is likely the result of confounding from other variables.  The following regression model shows the effects of each variable on the fuel efficiency of a vehicle after isolating the effects of the other variables.
+
+```{r}
+coef <- summary(lm(mpg ~ . , data = mtcars))$coefficients; coef
+```
+
+With the effect of transmission type adjusted to exclude the effects of other variables, it's P value rises to `r round(coef["am",4]*100,1)`%, well above 5% which means we fail to reject the null hypothesis.  In other words, even though the model indicates that a manual transmission results in a `r round(coef["am",1],1)` increase in MPG, there is a `r round(coef["am",4]*100,1)`% chance that the observed affect was random yet normal variance in the underlying data.
+
+In contrast, the weight (wt) of a vehicle appears to have a negative effect on fuel efficiency.  Even after factoring out the effects of other variables, a 1000 lb increase in car weight results in a loss of `r -1*round(coef["wt",1],2)` MPG ... if we are a little loose in our alpha level (P value of weight, `r round(coef["wt",4]*100,1)`%, is greater than 5%.)  This seems like a reasonable assessment, as common logic (and physics) dictate that a greater mass requires a greater fuel expenditure to propel it down the road.
+
+Finally, a regression of MPG with weight and transmission type alone should be considered.
+
+```{r}
+coef <- summary(lm(mpg ~ wt + am , data = mtcars))$coefficients; coef
+```
+
+In this model the transmission type fails to affect fuel efficiency in any meaningful way (P value of `r round(coef["am",4]*100,1)`%), but the weight of the vehicle is now clearly associated to the fuel efficiency.  Under this restricted model, a 1000 lb increase in vehicle weight will result in a loss of `r round(-1*coef["wt",1],1)` MPG (P value `r round(coef["wt",4]*100,7)`%).
+
+### Model Diagnostics
+
+The above analysis assumes a linear relationship between the variables and the MPG.  This is not always the case, as can be seen in Appendix A.  All variables except the number of cylinders (cyl), weight (wt), cylinder orientation (vs), and transmission type (am) have non-linear relationships.
+
+```{r echo=FALSE}
+amFit <- lm(mpg ~ am , data = mtcars)
+amResid <- residuals(amFit)
+wtFit <- lm(mpg ~ wt , data = mtcars)
+wtResid <- residuals(wtFit)
+```
+
+With regard to transmission type and vehicle weight, an examination of the residuals (See Appendix B) reveals quite a bit of noise in the observed weight's relationship to MPG.  However it appears fairly uniformly random, indicating weight's relation is indeed linear to MPG.  The residual noise in transmission type though is too large to even consider in the last model analyzed.
+
+### Conclusion
+
+Of the variables measured, weight appears to be the strongest predictor of a vehicles MPG such that each 1000lb increase in weight costs `r round(-1*coef["wt",1],1)` in miles per gallon.  With a p value of `r round(coef["wt",4]*100,7)`%, we rejected the null hypothesis that weight was not related to MPG.  We were unable to reject the similar null hypothesis for transmission type, which had a P value of `r round(coef["am",4]*100,1)`%.  Thus, we can not quantify a difference in MPG for an automatic or manual transmission.
+
+# Apendix
+
+## Apendix A
+```{r fig.height=7}
+pairs(mtcars, panel = panel.smooth)
+```
+
+
+
+## Apendix B - Residuals
+```{r fig.height=3}
+plot(wtResid ~ mtcars$wt)
+```
+
+```{r fig.height=3}
+plot(amResid ~ mtcars$am)
+```
+
+
+
